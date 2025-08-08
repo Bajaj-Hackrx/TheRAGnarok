@@ -8,18 +8,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 
-# --- CRITICAL FIX FOR IMPORTS ---
-# This block ensures that the parent directory ('model') is added to the Python path.
-# This allows main.py (inside 'backend') to find the sibling 'models' folder
-# and all modules inside the 'backend' folder itself.
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0, project_root)
-# --- END OF FIX ---
+# Load .env file from the current directory (project root)
+load_dotenv()
 
-# Now that the path is fixed, we can load the .env file from the root
-load_dotenv(os.path.join(project_root, '.env'))
-
-from models.schemas import (
+# --- CORRECTED IMPORTS FROM THE 'app' PACKAGE ---
+# This works because main.py is in the root, alongside the 'app' folder.
+from app.models.schemas import (
     QueryRequest, 
     QueryResponse, 
     UploadResponse, 
@@ -27,17 +21,13 @@ from models.schemas import (
     HackRXResponse,
     ErrorResponse
 )
-from services import chroma_service, ingestion_service, hackrx_service
-from agents import coordinator
+from app.services import chroma_service, ingestion_service, hackrx_service
+from app.agents import coordinator
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler('agentic_rag.log')
-    ]
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
@@ -118,9 +108,7 @@ async def upload_document(file: UploadFile = File(...)):
 async def query_documents(request: QueryRequest) -> QueryResponse:
     return await coordinator.process_query(query=request.question)
 
-@app.get("/status/", tags=["System"])
-async def get_system_status():
-    return {"status": "operational"}
+# --- Utility Endpoints for Cache Management ---
 
 @app.delete("/documents/{document_url:path}", tags=["Cache Management"])
 async def delete_document_cache(document_url: str):
