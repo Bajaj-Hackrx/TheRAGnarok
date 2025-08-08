@@ -1,0 +1,176 @@
+# Sensitive Configuration Files
+.env
+.env.local
+.env.production
+.env.staging
+*.env
+
+# API Keys and Secrets
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+config/secrets.*
+
+backend/data/chroma_db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+.conda/
+
+# Database Files
+*.db
+*.sqlite
+*.sqlite3
+data/chroma_db/
+chroma.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Logs
+*.log
+logs/
+agentic_rag.log
+backend/agentic_rag.log
+
+# Temporary files
+/tmp/
+*.tmp
+*.temp
+tmp/
+temp/
+.tmp/
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.spyderproject
+.spyproject
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+.AppleDouble
+.LSOverride
+Icon
+
+# Windows
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+.docker/
+
+# Uploaded Documents (sensitive data)
+data/documents/*
+!data/documents/.gitkeep
+uploads/
+documents/
+*.pdf
+*.docx
+*.eml
+sample_documents/
+
+# Model Cache and Large Files
+.cache/
+models/
+*.model
+*.bin
+*.safetensors
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Backup Files
+*.bak
+*.backup
+*~
+
+# Test Files (remove these before going public)
+test_openrouter_api.py
+test_pdf_parsing.py
+run_pdf_tests.py
+PDF_TESTING_README.md
+local_test.py
+test_*.py
+debug_*
+scratch.*
+
+# Node.js (if you add frontend later)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Lock Files (optional - uncomment if you want to exclude)
+# poetry.lock
+# Pipfile.lock
