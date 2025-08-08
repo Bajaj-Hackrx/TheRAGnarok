@@ -22,10 +22,12 @@ class ChromaDBService:
         try:
             os.makedirs(settings.chroma_persist_directory, exist_ok=True)
             
-            # Use the local SentenceTransformerEmbeddingFunction
+            # --- THIS IS THE CRITICAL CHANGE ---
+            # Switch back to the reliable local SentenceTransformerEmbeddingFunction
             self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
                 model_name=settings.embedding_model_name
             )
+            # --- END OF CHANGE ---
 
             self.client = chromadb.PersistentClient(
                 path=settings.chroma_persist_directory,
