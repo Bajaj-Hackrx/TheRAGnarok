@@ -8,11 +8,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 
+# --- CRITICAL FIX FOR DEPLOYMENT IMPORTS ---
+# This block adds the project's root directory to Python's search path.
+# This ensures that the 'app' package can be found when running on a server.
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+# --- END OF FIX ---
+
 # Load .env file from the current directory (project root)
 load_dotenv()
 
-# --- CORRECTED IMPORTS FROM THE 'app' PACKAGE ---
-# This works because main.py is in the root, alongside the 'app' folder.
 from app.models.schemas import (
     QueryRequest, 
     QueryResponse, 
