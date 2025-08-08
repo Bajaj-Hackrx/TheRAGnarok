@@ -9,10 +9,8 @@ langchain
 langchain-openai
 langgraph
 
-# Vector Database and Embeddings
+# Vector Database
 chromadb
-sentence-transformers
-torch
 
 # Document Processing
 pdfplumber
