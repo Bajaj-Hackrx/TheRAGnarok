@@ -1,6 +1,7 @@
 import logging
 import sys
 import os
+import time
 from contextlib import asynccontextmanager
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Depends, Header, status, File, UploadFile
@@ -8,24 +9,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 
-# --- CRITICAL FIX FOR DEPLOYMENT IMPORTS ---
-# This block adds the project's root directory to Python's search path.
-# This ensures that the 'app' package can be found when running on a server.
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-# --- END OF FIX ---
-
 # Load .env file from the current directory (project root)
 load_dotenv()
 
+# --- CORRECTED IMPORTS FROM THE 'app' PACKAGE ---
 from app.models.schemas import (
     QueryRequest, 
     QueryResponse, 
     UploadResponse, 
     HackRXRequest,
     HackRXResponse,
-    ErrorResponse
+    ErrorResponse,
+    PolicyQuestionsRequest,
+    PolicyQuestionsResponse
 )
-from app.services import chroma_service, ingestion_service, hackrx_service
+from app.services import chroma_service, ingestion_service, hackrx_service, llm_service
 from app.agents import coordinator
 
 # Configure logging
@@ -77,6 +75,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- Hackathon Specific Endpoint ---
 @app.post(
     "/hackrx/run", 
     response_model=HackRXResponse, 
@@ -93,6 +92,7 @@ async def run_hackathon_submission(request: HackRXRequest):
         logger.error(f"Critical error in /hackrx/run endpoint: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"An unexpected internal error occurred: {str(e)}")
 
+# --- General Purpose Endpoints ---
 @app.get("/health", tags=["System"])
 async def health_check():
     return {"status": "healthy"}
@@ -112,79 +112,62 @@ async def upload_document(file: UploadFile = File(...)):
 async def query_documents(request: QueryRequest) -> QueryResponse:
     return await coordinator.process_query(query=request.question)
 
-# --- Utility Endpoints for Cache Management ---
-
-@app.delete("/documents/{document_url:path}", tags=["Cache Management"])
-async def delete_document_cache(document_url: str):
-    """Delete cached document chunks for a specific URL."""
+# --- Policy Questions Endpoint (from merge) ---
+@app.post("/policy-questions/", response_model=PolicyQuestionsResponse, tags=["Insurance Policy"])
+async def answer_policy_questions(request: PolicyQuestionsRequest) -> PolicyQuestionsResponse:
+    """Answer specific National Parivar Mediclaim Plus Policy questions."""
     try:
-        doc_id = hackrx_service._create_document_id(document_url)
-        deleted_count = await chroma_service.delete_by_filter({"document_id": doc_id})
-        return {
-            "message": "Successfully deleted cached chunks for document",
-            "document_id": doc_id,
-            "deleted_chunks": deleted_count
-        }
-    except Exception as e:
-        logger.error(f"Failed to delete document cache: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to delete cache: {str(e)}")
-
-@app.delete("/documents/clear-all", tags=["Cache Management"])
-async def clear_all_cache():
-    """Clear the entire document cache in ChromaDB."""
-    try:
-        deleted_count = await chroma_service.clear_collection()
-        return {
-            "message": "Successfully cleared all cached documents",
-            "deleted_chunks": deleted_count
-        }
-    except Exception as e:
-        logger.error(f"Failed to clear cache: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to clear cache: {str(e)}")
-
-@app.get("/chunks/", tags=["Cache Management"])
-async def view_all_chunks(limit: Optional[int] = None):
-    """View all chunks stored in ChromaDB."""
-    try:
-        return await chroma_service.get_all_chunks(limit=limit)
-    except Exception as e:
-        logger.error(f"Failed to retrieve chunks: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve chunks: {str(e)}")
-
-@app.get("/chunks/document/{document_url:path}", tags=["Cache Management"])
-async def view_chunks_by_document(document_url: str, limit: Optional[int] = None):
-    """View chunks for a specific document URL."""
-    try:
-        doc_id = hackrx_service._create_document_id(document_url)
-        chunks_data = await chroma_service.get_chunks_by_document(doc_id, limit=limit)
-        return {
-            "document_url": document_url,
-            "document_id": doc_id,
-            **chunks_data
-        }
-    except Exception as e:
-        logger.error(f"Failed to retrieve chunks for document: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve chunks for document: {str(e)}")
-
-@app.get("/chunks/stats", tags=["Cache Management"])
-async def get_chunks_statistics():
-    """Get statistics about the chunks in ChromaDB."""
-    try:
-        total_count = chroma_service.get_collection_count()
-        sample_chunks = await chroma_service.get_all_chunks()
-        document_ids = set(
-            chunk["metadata"]["document_id"]
-            for chunk in sample_chunks.get("chunks", [])
-            if "document_id" in chunk.get("metadata", {})
+        start_time = time.time()
+        logger.info(f"Processing {len(request.questions)} policy questions...")
+        
+        context_chunks = []
+        if request.use_context:
+            try:
+                search_results = await chroma_service.search_similar(
+                    query="National Parivar Mediclaim Plus Policy insurance coverage benefits",
+                    n_results=5
+                )
+                context_chunks = [result.content for result in search_results]
+                logger.info(f"Retrieved {len(context_chunks)} context chunks from database")
+            except Exception as e:
+                logger.warning(f"Failed to retrieve context from database: {e}")
+        
+        # This assumes an 'answer_policy_questions' method exists in your llm_service
+        # You may need to add this method if it doesn't exist.
+        result = await llm_service.answer_policy_questions(
+            questions=request.questions,
+            context_chunks=context_chunks if context_chunks else None
         )
-        return {
-            "total_chunks": total_count,
-            "unique_documents_in_sample": len(document_ids),
-            "collection_name": chroma_service.collection.name if chroma_service.collection else "N/A",
-        }
+        
+        processing_time = time.time() - start_time
+        average_confidence = sum(result["confidence_scores"]) / len(result["confidence_scores"]) if result["confidence_scores"] else 0.0
+        
+        logger.info(f"Policy questions processed in {processing_time:.2f}s with avg confidence: {average_confidence:.2f}")
+        
+        return PolicyQuestionsResponse(
+            answers=result["answers"],
+            confidence_scores=result["confidence_scores"],
+            inferences=result["inferences"],
+            average_confidence=average_confidence,
+            processing_time=processing_time
+        )
     except Exception as e:
-        logger.error(f"Failed to get chunks statistics: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get statistics: {str(e)}")
+        logger.error(f"Policy questions processing failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Policy questions processing failed: {str(e)}")
+
+@app.get("/status/", tags=["System"])
+async def get_system_status():
+    return {"status": "operational"}
+
+# --- Exception Handlers ---
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc: HTTPException):
+    return JSONResponse(status_code=exc.status_code, content={"error": exc.detail})
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request, exc: Exception):
+    logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+    return JSONResponse(status_code=500, content={"error": "Internal server error"})
 
 if __name__ == "__main__":
     import uvicorn

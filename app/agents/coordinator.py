@@ -3,6 +3,7 @@ import time
 from typing import Dict, Any, List, TypedDict, Literal
 from langgraph.graph import StateGraph, END
 
+# --- CORRECTED RELATIVE IMPORTS ---
 from ..models.schemas import QueryResponse, EntityExtraction, SearchResult, DecisionType
 from .entity_extractor import EntityExtractorAgent
 from .vector_searcher import VectorSearchAgent
@@ -54,11 +55,16 @@ class AgentCoordinator:
             return await self.final_reasoner.run(state)
         
         def should_continue_after_entities(state: AgentState) -> Literal["vector_search", "end"]:
-            return "vector_search" if state.get("entity_extraction_status") == "success" else "end"
+            if state.get("entity_extraction_status") == "success":
+                return "vector_search"
+            else:
+                logger.warning("Entity extraction failed, ending workflow")
+                return "end"
         
         def should_continue_after_search(state: AgentState) -> Literal["final_reasoning", "end"]:
+            # Always proceed to reasoning, even if search fails, to provide a structured response.
             return "final_reasoning"
-
+        
         workflow = StateGraph(AgentState)
         
         workflow.add_node("extract_entities", extract_entities_step)

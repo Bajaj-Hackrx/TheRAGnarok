@@ -5,6 +5,7 @@ import chromadb
 from chromadb.utils import embedding_functions
 from chromadb.config import Settings as ChromaSettings
 
+# --- CORRECTED RELATIVE IMPORTS ---
 from ..models.config import settings
 from ..models.schemas import SearchResult
 
@@ -18,15 +19,11 @@ class ChromaDBService:
         self._initialize_client()
         
     def _initialize_client(self):
-        """Initialize ChromaDB client and collection with API-based embeddings."""
+        """Initialize ChromaDB client and collection with a local embedding model."""
         try:
             os.makedirs(settings.chroma_persist_directory, exist_ok=True)
             
-            # Use the OpenAIEmbeddingFunction and point it to OpenRouter's API.
-            # This correctly handles API-based models.
-            self.embedding_function = embedding_functions.OpenAIEmbeddingFunction(
-                api_key=settings.openrouter_api_key,
-                api_base=settings.openrouter_base_url,
+            self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
                 model_name=settings.embedding_model_name
             )
 
